@@ -1,0 +1,3 @@
+[console_scripts]
+funds_gather = funds_gather.funds_gather:main
+
