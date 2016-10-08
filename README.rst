@@ -22,7 +22,7 @@ Usage:
 ######
 See help for now:
 
-.. code-block: bash
+::
     
     $ funds_gather -h
 
@@ -51,7 +51,7 @@ See help for now:
 Installation
 ############
 
-.. code-block: bash
+::
 
     $ pip install funds_gather
 
