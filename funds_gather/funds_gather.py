@@ -15,21 +15,23 @@
 """
 
 Usage:
-    funds_gather.py [options] PARAMFILE all
-    funds_gather.py [options] PARAMFILE (step1|step2)...
+    funds_gather.py [options] <username> <password> all
+    funds_gather.py [options] <username> <password> (%s)...
+    funds_gather.py --conf=FILE
     funds_gather.py -h
 
 Arguments:
-    PARAMFILE   YAML file with inputs
-    all         Run all steps in the flow
-    step1       Run step 1
-    step2       Run step 2
+    username    Login name
+    password    Login password
+    all         Run all steps in the flow (%s)
+%s
 
 Options:
     -h --help        show this message
     -v --verbose     show more information
     -d --debug       show even more information
-    --rundir=PATH    set path for running simulations in [default: runs] 
+    --version        show version
+    --out=FILE       output filename [default: out.qif] 
     --conf=FILE      load options from file
 
 """
@@ -44,7 +46,8 @@ from schema import Schema, And, Optional, Or, Use, SchemaError
 
 from version import __version__
 from utils import ordered_load, merge_args
-
+from plugins.md529 import MD529
+from plugins.output_plugin_qif import OutputPluginQif
 
 
 """
@@ -63,6 +66,9 @@ class FundsGather(object):
         """ 
         """
         self.args = None
+        self.flow = OrderedDict([ ('download', 'Download all transactions from accounts'),
+                                  ('qif',      'Save downloaded transactions to qif'),
+                      ])
 
 
 
@@ -78,7 +84,11 @@ class FundsGather(object):
             :ivar config: Dict of the config file
 
         """
-        args = docopt(__doc__)
+        padding = max([len(x) for x in self.flow.keys()]) # Find max length of flow step names for padding with white space
+        docstring = __doc__ % ('|'.join(self.flow), 
+                              ','.join(self.flow.keys()),
+                              '\n'.join(['    '+k+' '*(padding+4-len(k))+v for k,v  in self.flow.items()]))
+        args = docopt(docstring, version=__version__)
 
         # Load in default conf values from file if specified
         if args['--conf']:
@@ -89,7 +99,9 @@ class FundsGather(object):
         args = merge_args(conf_args, args)
 
         schema = Schema({
-            'PARAMFILE': Use(open, error='PARAMFILE should be readable'),
+            '<username>': And(str, len),
+            '<password>': And(str, len),
+            '--out': And(str, len),
             object: object
             })
         try:
@@ -97,13 +109,12 @@ class FundsGather(object):
         except SchemaError as e:
             exit(e)
 
-        self.flow = ['step1', 'step2']
         if args['all'] == 0:
             for f in list(self.flow):
-                if args[f] == 0: self.flow.remove(f)
+                if args[f] == 0: del self.flow[f]
+            logging.info("Doing flow steps: %s" % (','.join(self.flow.keys())))
 
-        self.parameters = ordered_load(args['PARAMFILE'])
-        self.run_dir = args['--rundir']
+        self.output_file = args['--out']
 
         if args['--debug']:
             logging.basicConfig(level=logging.DEBUG, format='%(message)s')
@@ -123,6 +134,20 @@ class FundsGather(object):
         """
         # Read the command line options
         self.get_options(argv)
+        if 'download' in self.flow:
+            acct = MD529()
+            acct.login(self.args['<username>'], self.args['<password>'])
+            acct_numbers = acct.get_accounts()
+            transactions = []
+            for acct_number in acct_numbers:
+                trans = acct.get_transactions(acct_number)
+                transactions += trans
+                for tran in trans:
+                    print(str(tran))
+            
+            if 'qif' in self.flow:
+                out = OutputPluginQif()
+                out.emit(self.output_file, transactions)
 
 
 def main():

@@ -1,7 +1,11 @@
-funds_gather - 
-=========================================
+FundsGather
+============
 
 |image_pypi| |image_downloads| |image_license| |passing| |quality| |Coverage Status|
+
+FundsGather is a script to gather your financial fund information from accounts that do not support standard banking file exports such as QFX, OFX, QIF or even direct connect.
+Currently, this program supports downloading transactions from Maryland's 529 College Savings plans and exporting to QIF, for import into your financial software like Quicken,
+Banktivity, or MoneyDance.  An OFX/QFX plugin is also in the works.
 
 * Free and open-source software: ASL2 license
 * Blog: http://virantha.com/category/projects/funds_gather
@@ -11,13 +15,38 @@ funds_gather -
 Features
 ########
 
-* Kitchen
-* Sink
+* Import from web account of Maryland 529 College Savings of all accounts tied to user.
+* Export to QIF file.
 
 Usage:
 ######
+See help for now:
 
-See docs
+.. code-block: bash
+    
+    $ funds_gather -h
+
+    Usage:
+        funds_gather.py [options] <username> <password> all
+        funds_gather.py [options] <username> <password> (download|qif)...
+        funds_gather.py --conf=FILE
+        funds_gather.py -h
+     
+    Arguments:
+        username    Login name
+        password    Login password
+        all         Run all steps in the flow (download,qif)
+        download    Download all transactions from accounts
+        qif         Save downloaded transactions to qif
+     
+    Options:
+        -h --help        show this message
+        -v --verbose     show more information
+        -d --debug       show even more information
+        --version        show version
+        --out=FILE       output filename [default: out.qif] 
+        --conf=FILE      load options from file
+
 
 Installation
 ############
