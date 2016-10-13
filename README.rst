@@ -15,8 +15,15 @@ Banktivity, or MoneyDance.  An OFX/QFX plugin is also in the works.
 Features
 ########
 
+
 * Import from web account of Maryland 529 College Savings of all accounts tied to user.
 * Export to QIF file.
+
+Right now, the functionality is fairly rudimentary, but I intend to develop this more in the months to come.  Here's my todo list:
+
+* Export to QFX/OFX (depending on what my financial software supports, it would be easier to write a plugin for XML compliant format)
+* Import other types of transactions (right now, only buys are supported)
+* Import other web sites
 
 Usage:
 ######
