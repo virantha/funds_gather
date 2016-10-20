@@ -11,7 +11,7 @@ class OutputPluginQif(object):
                 f.write('D%s\n' % t.date)
                 f.write('NBuy\n')
                 f.write('M%s\n' % t.trans_type)
-                f.write('Y%s\n' % t.fund_id)
+                f.write('Y%s\n' % t.fund.name)
                 f.write('I%s\n' % t.unit_price)
                 f.write('Q%s\n' % t.units)
                 f.write('T%s\n' % t.invest_amount)

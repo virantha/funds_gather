@@ -1,3 +1,4 @@
 pyyaml>=3.1.0
 docopt
 schema
+python-templet

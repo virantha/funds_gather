@@ -31,7 +31,7 @@ Options:
     -v --verbose     show more information
     -d --debug       show even more information
     --version        show version
-    --out=FILE       output filename [default: out.qif] 
+    --out=FILE       output filename [default: out] 
     --conf=FILE      load options from file
 
 """
@@ -48,6 +48,7 @@ from version import __version__
 from utils import ordered_load, merge_args
 from plugins.md529 import MD529
 from plugins.output_plugin_qif import OutputPluginQif
+from plugins.output_plugin_ofx import OutputPluginOfx
 
 
 """
@@ -68,6 +69,7 @@ class FundsGather(object):
         self.args = None
         self.flow = OrderedDict([ ('download', 'Download all transactions from accounts'),
                                   ('qif',      'Save downloaded transactions to qif'),
+                                  ('ofx',      'Save downloaded transactions to ofx'),
                       ])
 
 
@@ -114,7 +116,7 @@ class FundsGather(object):
                 if args[f] == 0: del self.flow[f]
             logging.info("Doing flow steps: %s" % (','.join(self.flow.keys())))
 
-        self.output_file = args['--out']
+        self.output_file_prefix = args['--out']
 
         if args['--debug']:
             logging.basicConfig(level=logging.DEBUG, format='%(message)s')
@@ -138,16 +140,21 @@ class FundsGather(object):
             acct = MD529()
             acct.login(self.args['<username>'], self.args['<password>'])
             acct_numbers = acct.get_accounts()
+            logging.info("Got %d accounts: %s" % (len(acct_numbers), ','.join(acct_numbers)))
             transactions = []
             for acct_number in acct_numbers:
                 trans = acct.get_transactions(acct_number)
                 transactions += trans
                 for tran in trans:
-                    print(str(tran))
+                    logging.debug(str(tran))
             
-            if 'qif' in self.flow:
-                out = OutputPluginQif()
-                out.emit(self.output_file, transactions)
+                if 'qif' in self.flow:
+                    out = OutputPluginQif()
+                    out.emit('%s_%s.qif' % (self.output_file_prefix, acct_number), trans)
+
+                if 'ofx' in self.flow:
+                    out = OutputPluginOfx()
+                    out.emit('%s_%s.ofx' % (self.output_file_prefix, acct_number), trans)
 
 
 def main():

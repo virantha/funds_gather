@@ -1,19 +1,10 @@
 import requests
 from lxml import html
 import logging
+import dateparser
+from transaction import *
 
-
-class Transaction(object):
-    def __init__(self, fund_id, trans_date, trans_type, unit_price, units, invest_amount):
-        self.date = trans_date
-        self.fund_id = fund_id
-        self.trans_type = trans_type
-        self.unit_price = float(unit_price)
-        self.units = float(units)
-        self.invest_amount = float(invest_amount)
-
-    def __str__(self):
-        return '%s - %s:  %s @ $%s (total $%s)' % (self.trans_type, self.fund_id, self.units, self.unit_price, self.invest_amount)
+from collections import namedtuple
 
 class MD529(object):
 
@@ -24,9 +15,28 @@ class MD529(object):
              'transactions': 'https://secure.collegesavingsmd.org/pls/prod/hwtkstmt_MD.P_DispAcctStmt',
             }
 
+    FundRecord = namedtuple('FundRecord', 'name, ticker, cusip')
+    # Use the tickers from Bloomberg; these are not real funds available on finance sites to lookup, but
+    # I need something for the CUSIP field and ticker.
+    fund_mapping = [ ['Portfolio 2036', '5392164:US', '5292164US'],
+                     ['Portfolio 2033', '5392163:US', '5292163US'],
+                     ['Portfolio 2030', '5291623:US  ', '5291623US'],
+                     ['Portfolio 2027', '5290957:US', '5290957US'],
+                     ['Portfolio 2024', '5290956:US', '5290956US'],
+                     ['Portfolio 2021', '5290955:US', '5290955US'],
+                     ['Portfolio 2018', '5290954:US', '5290954US'],
+                     ['Portfolio for College', '5290951:US', '5290951US'],
+                     ['Balanced Portfolio', '5290960:US', '5290960US'],
+                     ['Equity Portfolio', '5290958:US', '5290958US'],
+                     ['Inflation Focused Bond Port', '5290952:US', '5290962US'],
+                     ['Global Equity Mkt Index Port', '5290959:US', '5290959US'],
+                     ['Bond and Income Portfolio', '5290961:US', '5290961US'],
+
+                   ]
+
     def __init__(self):
         self.session = requests.session()
-        pass
+        self.funds = { x[0]: Fund(*x) for x in self.fund_mapping}
 
     def login(self, user, password):
         authenticity_token = self.get_form_key(self.urls['home'])
@@ -48,6 +58,7 @@ class MD529(object):
                 headers = dict(referer = url)
                 )
         tree = html.fromstring(result.text)
+        logging.debug(result.text)
         account_numbers = tree.xpath('//select[@name="cnum"]/option/@value')                                                                                                                                        
         return account_numbers
 
@@ -73,7 +84,7 @@ class MD529(object):
         logging.debug(result.headers)
         logging.debug(result.content) 
         tree = html.fromstring(result.content)
-        transactions = self._parse_transactions(tree)
+        transactions = self._parse_transactions(tree, account)
         return transactions
 
     def get_form_key(self, url):
@@ -93,7 +104,7 @@ class MD529(object):
             l.append(x)
         return l
 
-    def _parse_transactions(self, tree):
+    def _parse_transactions(self, tree, account_number):
 
         fund_name = tree.xpath("//tr[td/span/text()='Portfolio: ']/td/span/text()")[1]
         # Get all the dates, types(contribution), invested amount, unit price, number of units
@@ -107,8 +118,16 @@ class MD529(object):
         units = self._clean_up(_values[2::4])         # Third column
 
         transactions = []
+        if fund_name in self.funds:
+            fund = self.funds[fund_name]
+        else:
+            print("WARNING: Fund name %s not known" % fund_name)
+            fund = Fund(fund_name, 'UNKNOWN', 'UNKNOWN')
+
+        account = Account('Maryland 520 College Investment Plan', account_number)
+        dates = [dateparser.parse(d) for d in dates]
         for d,t,a,p,u in zip(dates, types, invest_amounts, prices, units):
-            transactions.append(Transaction(fund_name, d, t, p, u, a))
+            transactions.append(Transaction(fund, d, t, p, u, a, account))
         return transactions
 
 
